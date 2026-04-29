@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>ARQUION — Autenticando...</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:#080e0a;color:#eef4f0;
+     min-height:100vh;display:flex;align-items:center;justify-content:center;
+     flex-direction:column;gap:16px;}
+.logo{font-family:serif;font-size:26px;font-weight:700;letter-spacing:8px;color:#3DAF6E;}
+.msg{font-size:12px;color:#6a8070;margin-top:6px;text-align:center;}
+.spinner{width:28px;height:28px;border:2px solid #1a2e20;border-top-color:#3DAF6E;
+         border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="logo">ARQUION</div>
+<div class="spinner"></div>
+<div class="msg" id="msg">Concluindo autenticação Microsoft...</div>
+<script>
+// Capturar o token do hash da URL e enviar para a janela pai via postMessage
+(function(){
+  var msg = document.getElementById('msg');
+  var hash = window.location.hash || window.location.search;
+  
+  // Tentar pegar do hash fragment (#access_token=...)
+  var params;
+  if(window.location.hash && window.location.hash.includes('access_token')){
+    params = new URLSearchParams(window.location.hash.substring(1));
+  } else if(window.location.search && window.location.search.includes('access_token')){
+    params = new URLSearchParams(window.location.search.substring(1));
+  }
+
+  if(params && params.get('access_token')){
+    var token  = params.get('access_token');
+    var expSec = parseInt(params.get('expires_in')) || 3600;
+    
+    msg.textContent = '✓ Autenticado! Enviando token...';
+    
+    // Enviar para a janela pai
+    if(window.opener && !window.opener.closed){
+      window.opener.postMessage({
+        type  : 'ms_token',
+        token : token,
+        expSec: expSec
+      }, window.location.origin);
+      msg.textContent = '✓ Conectado! Fechando...';
+      setTimeout(function(){ window.close(); }, 800);
+    } else {
+      // Sem popup: salvar na URL e redirecionar para index
+      msg.textContent = '✓ Token recebido. Redirecionando...';
+      setTimeout(function(){ window.location.href = './index.html'; }, 1000);
+    }
+  } else {
+    // Verificar se há erro
+    var errorDesc = params ? params.get('error_description') : null;
+    if(window.opener && !window.opener.closed){
+      window.opener.postMessage({
+        type : 'ms_token',
+        error: errorDesc || 'Token não recebido'
+      }, window.location.origin);
+      window.close();
+    } else {
+      msg.textContent = 'Erro na autenticação. Redirecionando...';
+      setTimeout(function(){ window.location.href = './index.html'; }, 2000);
+    }
+  }
+})();
+</script>
+</body>
+</html>
